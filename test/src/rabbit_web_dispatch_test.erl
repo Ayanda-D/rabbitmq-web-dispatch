@@ -36,3 +36,54 @@ add_idempotence_test() ->
        1, length([ok || {"/foo", _, _} <-
                             rabbit_web_dispatch_registry:list_all()])),
     passed.
+
+log_source_address_upon_failure_test() ->
+
+    %% Given: everything in place to issue AND log a failed response.
+    {ok, _} = rabbit_web_dispatch:register_context_handler(bunny,
+        [{port, port()}], path(), fun h/1, description()),
+
+    %% When: when a client makes a request which WILL fail.
+    {ok, _Response} = httpc:request("http://localhost:" ++
+        string(port()) ++ "/" ++ path()),
+
+    %% Then: reproduce log WITHOUT source IP address.
+    true = logged(path()) and logged(reason()).
+
+
+%% Ancillary
+
+port() -> 4096.
+
+string(N) -> erlang:integer_to_list(N).
+
+path() -> "wonderland".
+
+description() -> "Test that source IP address is logged upon failed HTTP response.".
+
+status() -> 500.
+
+h(Req) ->
+    rabbit_webmachine_error_handler:render_error(status(),
+        webmachine:new_request(mochiweb, Req), reason()),
+    Req:respond({status(), [], ""}).
+
+reason() -> "Testing, testing... 1, 2, 3.".
+
+logged(Text) ->
+    {ok, Handle} = file:open(rabbit:log_location(kernel), [read]),
+    logged(Handle, Text).
+
+logged(Handle, Text) ->
+    case io:get_line(Handle, "") of
+        eof ->
+            file:close(Handle),
+            false;
+        Line ->
+            case string:str(Line, Text) of
+                0 ->
+                    logged(Handle, Text);
+                N when is_integer(N), N > 0 ->
+                    true
+            end
+    end.
