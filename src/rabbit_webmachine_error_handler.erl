@@ -54,4 +54,6 @@ maybe_log(_Req, {error, {exit, normal, _Stack}}) ->
     ok;
 maybe_log(Req, Reason) ->
     {Path, _} = Req:path(),
-    error_logger:error_msg("webmachine error: path=~p~n~p~n", [Path, Reason]).
+    {Peer, _} = Req:peer(),
+    error_logger:error_msg("webmachine error:~n"
+        "source=~p~npath=~p~nreason=~p~n", [Peer, Path, Reason]).

@@ -39,19 +39,21 @@ add_idempotence_test() ->
 
 log_source_address_upon_failure_test() ->
 
-    %% Given: everything in place to issue AND log a failed response.
+    %% Given:
     {ok, _} = rabbit_web_dispatch:register_context_handler(bunny,
         [{port, port()}], path(), fun h/1, description()),
 
-    %% When: when a client makes a request which WILL fail.
-    {ok, _Response} = httpc:request("http://localhost:" ++
-        string(port()) ++ "/" ++ path()),
+    %% When:
+    {ok, _Response} = httpc:request(get, {"http://localhost:" ++
+        string(port()) ++ "/" ++ path(), []}, [], [{ip, source()}]),
 
-    %% Then: reproduce log WITHOUT source IP address.
-    true = logged(path()) and logged(reason()).
+    %% Then:
+    true = logged(source()) and logged(path()) and logged(reason()).
 
 
 %% Ancillary
+
+source() -> "127.0.0.1".
 
 port() -> 4096.
 
